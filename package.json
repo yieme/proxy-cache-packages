@@ -1,0 +1,49 @@
+{
+  "name": "proxy-cache-packages",
+  "version": "0.1.0",
+  "description": "Proxy Cache for Packages",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "doctoc": "doctoc README.md && if [[ $(git diff --shortstat 2> /dev/null | tail -n1) != '' ]]; then git add README.md && git commit --no-verify -m 'table of contents update'; fi",
+    "test": "mocha -R list test/*.js"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yieme/proxy-cache-packages"
+  },
+  "keywords": [
+    "proxy",
+    "cache",
+    "middleware",
+    "express"
+  ],
+  "author": "Yieme",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yieme/proxy-cache-packages/issues"
+  },
+  "dependencies": {
+    "firebase-safekey": "^0.1.7",
+    "fsurl": "^0.1.3",
+    "lodash": "^3.8.0",
+    "proxy-cache-multi-domain": "^0.1.2"
+  },
+  "devDependencies": {
+    "chai": "~1.10.0",
+    "express": "^4.12.3",
+    "object-attributes": "~0.1.1"
+  },
+  "globalDependencies": {
+    "jshint": "^2.7.0",
+    "mocha": "~2.1.0"
+  },
+  "generatedBy": {
+    "name": "generator-pkg",
+    "version": "0.8.9",
+    "url": "https://github.com/yieme/generator-pkg"
+  }
+}
