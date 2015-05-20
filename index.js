@@ -172,8 +172,10 @@ function proxyCachePackages(req, callback) {
   if ('string' == typeof packages) {
     packages = packages.split(options.groupSeperator)
   }
-  console.log('initial packages:', packages)
-
+  if (options.logRequest) {
+    var logger = (req.locals && req.locals._log) ? req.locals._log : console
+    logger.info('proxyCachePackages:', packages)
+  }
   var packageUrls = []
   for (var i=0, len=packages.length; i < len; i++) {
     var pack = buildPackage(packages[i])
@@ -186,7 +188,6 @@ function proxyCachePackages(req, callback) {
       packurl += pack.name + options.versionSeperator + pack.version + options.packageSeperator
       if (pack.file) packurl += pack.file
     }
-    console.log('pack URL:', packurl)
     packageUrls.push(packurl)
   }
 
