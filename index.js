@@ -47,7 +47,13 @@ function loadPackages(path, callback) {
 
 function init() {
   fbkey.config(options.keymap)
-  packages = loadPackages(options.packageDataUrl)
+  packages = { packages: {} }
+  var list = (_.isArray(options.packageDataUrl)) ? options.packageDataUrl : [ options.packageDataUrl ]
+  for (var i=0; i < list.length; i++) {
+    var loadedPackages = loadPackages(list[i])
+    packages = _.extend(packages, loadedPackages)
+    if (packages.packages && !packages.packages.cdn) delete packages.packages
+  }
   return packages
 }
 
@@ -109,6 +115,7 @@ function findBestVersion(getversion, versions) {
 
 function getMainFile(pack, version) {
   pack = packages[pack]
+  if (!pack) return
   var packver = pack[version]
   if (_.isObject(packver) && packver.main) {
     return pack.mains[packver.main]
@@ -174,28 +181,29 @@ function proxyCachePackages(req, callback) {
     req     = req || {}
     options = _.extend(options, req)
     proxyCacheMultiDomain(options)
-    init()
+    if (!options.skipInit) init()
     return proxyCachePackages
   }
 
-  var packages = req.url
-  if (!packages) callback(new Error('Missing Package(s)'))
+  var reqPackages = req.url
+  if (!reqPackages) callback('Missing Package(s)')
 
-  if ('string' == typeof packages) {
-    packages = packages.split(options.groupSeperator)
+  if ('string' == typeof reqPackages) {
+    reqPackages = reqPackages.split(options.groupSeperator)
   }
   if (options.logRequest) {
     var logger = (req.locals && req.locals._log) ? req.locals._log : console
-    logger.info('proxyCachePackages:', packages)
+    logger.info('proxyCachePackages:', reqPackages)
   }
   var packageUrls = []
-  for (var i=0, len=packages.length; i < len; i++) {
-    var pack = buildPackage(packages[i])
-    if (!pack)           return callback(new Error('Invalid Package: '         + packages[i]))
+  for (var i=0, len=reqPackages.length; i < len; i++) {
+    var packRequest = reqPackages[i]
+    var pack = buildPackage(packRequest)
+    if (!pack)           return callback('Invalid Package: '         + packRequest)
     if ('string' !== typeof pack) {
-      if (!pack.name)    return callback(new Error('Invalid Package Name: '    + packages[i]))
-      if (!pack.version) return callback(new Error('Invalid Package Version: ' + packages[i]))
-      if (!pack.domain)  return callback(new Error('Invalid Package Domain: '  + packages[i]))
+      if (!pack.name)    return callback('Invalid Package Name: '    + packRequest)
+      if (!pack.version) return callback('Invalid Package Version: ' + packRequest)
+      if (!pack.domain)  return callback('Invalid Package Domain: '  + packRequest)
       var packurl = pack.domain + options.domainSeperator
       packurl += pack.name + options.versionSeperator + pack.version + options.packageSeperator
       if (pack.file) packurl += pack.file
