@@ -48,6 +48,7 @@ function loadPackages(path, callback) {
 function init() {
   fbkey.config(options.keymap)
   packages = loadPackages(options.packageDataUrl)
+  return packages
 }
 
 
@@ -205,9 +206,7 @@ function proxyCachePackages(req, callback) {
   proxyCacheMultiDomain({url: packageUrls}, callback)
 }
 
-init()
-
 
 
 module.exports          = proxyCachePackages
-module.exports.packages = packages
+module.exports.init     = init
