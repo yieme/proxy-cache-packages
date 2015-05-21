@@ -154,7 +154,7 @@ function buildPackage(url) {
   if (domainPos >= 0) return url
   var seperatorPos = url.indexOf(options.packageSeperator, 1) // skip early slash
   var pack
-  if (seperatorPos < 0) {
+  if (seperatorPos < 0 || seperatorPos == (url.length -1)) {
     pack      = identifyVersionAndDomain(url)
     pack.file = getMainFile(pack.name, pack.version)
   } else {
@@ -199,11 +199,11 @@ function proxyCachePackages(req, callback) {
   for (var i=0, len=reqPackages.length; i < len; i++) {
     var packRequest = reqPackages[i]
     var pack = buildPackage(packRequest)
-    if (!pack)           return callback('Invalid Package: '         + packRequest)
+    if (!pack)           return callback(new Error('Invalid Package: '   + packRequest))
     if ('string' !== typeof pack) {
-      if (!pack.name)    return callback('Invalid Package Name: '    + packRequest)
-      if (!pack.version) return callback('Invalid Package Version: ' + packRequest)
-      if (!pack.domain)  return callback('Invalid Package Domain: '  + packRequest)
+      if (!pack.name)    return callback('Package Not Found: ' + packRequest)
+      if (!pack.version) return callback('Version Not Found: ' + packRequest)
+      if (!pack.domain)  return callback('Domain Not Found: '  + packRequest)
       var packurl = pack.domain + options.domainSeperator
       packurl += pack.name + options.versionSeperator + pack.version + options.packageSeperator
       if (pack.file) packurl += pack.file
