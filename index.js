@@ -24,7 +24,7 @@ var packages
 
 
 function bootswatchFileHelper(path) {
-  if (path.indexOf('bootstrap.') < 0) {
+  if (path.indexOf('.') < 0) {
     if (path.substr(path.length -1, 1) != '/') path += '/'
     path += 'bootstrap.min.css'
   }
@@ -118,10 +118,12 @@ function getMainFile(pack, version) {
 
 function identifyVersionAndDomain(packageVersion) {
   var domain, name, version
+  if (!packageVersion) return {}
   var part = packageVersion.split(options.versionSeperator)
   name = part[0].replace('/', '')
+  if (!name) return {}
   var pack = packages[name]
-  if (!pack) return null
+  if (!pack) return {}
   if (part[1]) { // version supplied
     version = part[1]
     if (!pack[version]) { // not exact match therefore find nearest version
@@ -143,7 +145,7 @@ function buildPackage(url) {
   var domainPos    = url.indexOf(options.domainSeperator)
   if (domainPos >= 0) return url
   var seperatorPos = url.indexOf(options.packageSeperator, 1) // skip early slash
-  var pack    = {}
+  var pack
   if (seperatorPos < 0) {
     pack      = identifyVersionAndDomain(url)
     pack.file = getMainFile(pack.name, pack.version)
@@ -151,7 +153,16 @@ function buildPackage(url) {
     pack      = identifyVersionAndDomain(url.substr(0, seperatorPos))
     pack.file = url.substr(seperatorPos + 1, url.length - seperatorPos - 1)
   }
+  if (!pack.name) return pack
   if (pack.domain =='bootstrap') pack.file = bootswatchFileHelper(pack.file)
+  if (pack.name && pack.file) {
+    var part = pack.file.split('/')
+    var i = part.length - 1
+    if (part[i][0] == '.') {
+      part[i] = pack.name + part[i]
+      pack.file = part.join('/')
+    }
+  }
   return pack
 }
 
@@ -198,4 +209,5 @@ init()
 
 
 
-module.exports = proxyCachePackages
+module.exports          = proxyCachePackages
+module.exports.packages = packages
