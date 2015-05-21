@@ -157,12 +157,14 @@ function buildPackage(url) {
   if (seperatorPos < 0 || seperatorPos == (url.length -1)) {
     pack      = identifyVersionAndDomain(url)
     pack.file = getMainFile(pack.name, pack.version)
+    if (pack.file.indexOf('/') >= 0) pack.redirect = true
   } else {
     pack      = identifyVersionAndDomain(url.substr(0, seperatorPos))
     pack.file = url.substr(seperatorPos + 1, url.length - seperatorPos - 1)
+    if (!pack.file || (pack.file.indexOf('.') < 0) && pack.name != 'bootswatch') pack.file = getMainFile(pack.name, pack.version)
   }
   if (!pack.name) return pack
-  if (pack.domain =='bootstrap') pack.file = bootswatchFileHelper(pack.file)
+  if (pack.domain == 'bootstrap') pack.file = bootswatchFileHelper(pack.file)
   if (pack.name && pack.file) {
     var part = pack.file.split('/')
     var i = part.length - 1
@@ -207,6 +209,7 @@ function proxyCachePackages(req, callback) {
       var packurl = pack.domain + options.domainSeperator
       packurl += pack.name + options.versionSeperator + pack.version + options.packageSeperator
       if (pack.file) packurl += pack.file
+      if (pack.redirect) return callback(null, { redirect: '../' + packurl.split(':')[1] })
     }
     packageUrls.push(packurl)
   }
