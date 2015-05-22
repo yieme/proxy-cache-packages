@@ -201,7 +201,7 @@ function proxyCachePackages(req, callback) {
   if ('string' == typeof reqPackages) {
     reqPackages = reqPackages.split(options.groupSeperator)
   }
-  options.logger.debug('proxyCachePackages: ' + reqPackages[0])
+  options.logger.debug('proxyCachePackages: ' + JSON.stringify(reqPackages))
 
   var packageUrls = []
   for (var i=0, len=reqPackages.length; i < len; i++) {
