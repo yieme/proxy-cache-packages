@@ -1,6 +1,6 @@
 {
   "name": "proxy-cache-packages",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Proxy Cache for Packages",
   "main": "index.js",
   "scripts": {
