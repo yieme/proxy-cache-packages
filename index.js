@@ -136,7 +136,7 @@ function identifyVersionAndDomain(packageVersion) {
   var domain, name, version
   if (!packageVersion) return {}
   var part = packageVersion.split(options.versionSeperator)
-  name = part[0].replace('/', '')
+  name = part[0].replace('/', '') // remove leading slash /
   if (!name) return {}
   var pack = packages[name]
   if (!pack) return {}
@@ -164,10 +164,12 @@ function buildPackage(url) {
   var pack
   if (seperatorPos < 0 || seperatorPos == (url.length -1)) {
     pack      = identifyVersionAndDomain(url)
+    if (!pack.name) return pack
     pack.file = getMainFile(pack.name, pack.version)
     if (pack.file.indexOf('/') >= 0 && pack.file.indexOf('.js') < 0) pack.redirect = true
   } else {
     pack      = identifyVersionAndDomain(url.substr(0, seperatorPos))
+    if (!pack.name) return pack
     pack.file = url.substr(seperatorPos + 1, url.length - seperatorPos - 1)
     if (!pack.file || (pack.file.indexOf('.') < 0) && pack.name != 'bootswatch') pack.file = getMainFile(pack.name, pack.version)
   }
