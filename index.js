@@ -165,7 +165,7 @@ function buildPackage(url) {
   if (seperatorPos < 0 || seperatorPos == (url.length -1)) {
     pack      = identifyVersionAndDomain(url)
     pack.file = getMainFile(pack.name, pack.version)
-    if (pack.file.indexOf('/') >= 0) pack.redirect = true
+    if (pack.file.indexOf('/') >= 0 && pack.file.indexOf('.js') < 0) pack.redirect = true
   } else {
     pack      = identifyVersionAndDomain(url.substr(0, seperatorPos))
     pack.file = url.substr(seperatorPos + 1, url.length - seperatorPos - 1)
