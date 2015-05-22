@@ -9,6 +9,13 @@ var _                     = require('lodash')
 var fsurl                 = require('fsurl')
 var fbkey                 = require('firebase-safekey')
 var proxyCacheMultiDomain = require('proxy-cache-multi-domain')
+var logger      = {
+  info:  function(msg) { console.log('info:', msg) },
+  debug: function(msg) { console.log('debug:', msg) },
+  warn:  function(msg) { console.warn('warn:', msg) },
+  error: function(msg) { console.error('error:', msg) },
+  log:   console.log,
+}
 var options               = {
   groupSeperator:   ',',
   domainSeperator:  ':',
@@ -17,6 +24,7 @@ var options               = {
   fileSeperator:    '+',
   dir:              './tmp',
   keymap:           { '.': ':' },
+  logger:           logger,
 //  packageDataUrl:   'https://pub.firebaseio.com/cdn',
   packageDataUrl:   'cdnall_data.json',
 }
@@ -193,10 +201,8 @@ function proxyCachePackages(req, callback) {
   if ('string' == typeof reqPackages) {
     reqPackages = reqPackages.split(options.groupSeperator)
   }
-  if (options.logRequest) {
-    var logger = (req.locals && req.locals._log) ? req.locals._log : console
-    logger.info('proxyCachePackages:', reqPackages)
-  }
+  options.logger.debug('proxyCachePackages: ' + reqPackages[0])
+
   var packageUrls = []
   for (var i=0, len=reqPackages.length; i < len; i++) {
     var packRequest = reqPackages[i]
