@@ -189,6 +189,13 @@ function buildPackage(url) {
 
 
 function proxyCachePackages(req, callback) {
+  function callbackError(param) {
+    param.in  = (param.in) ? 'proxyCachePackages' + '.' + param.in : 'proxyCachePackages'
+    param.url = req.url
+    logger.warn(JSON.stringify(param))
+    return callback('{ "code": 404, "error": "Not Found" }')
+  }
+
   if (!callback) {
     req     = req || {}
     options = _.extend(options, req)
@@ -198,7 +205,7 @@ function proxyCachePackages(req, callback) {
   }
 
   var reqPackages = req.url
-  if (!reqPackages) callback('Missing Package(s)')
+  if (!reqPackages) return callbackError({ err: 'Missing Package(s)' })
 
   if ('string' == typeof reqPackages) {
     reqPackages = reqPackages.split(options.groupSeperator)
@@ -209,11 +216,11 @@ function proxyCachePackages(req, callback) {
   for (var i=0, len=reqPackages.length; i < len; i++) {
     var packRequest = reqPackages[i]
     var pack = buildPackage(packRequest)
-    if (!pack)           return callback(new Error('Invalid Package: '   + packRequest))
+    if (!pack)           return callbackError({ err: 'Invalid Package', pack: packRequest })
     if ('string' !== typeof pack) {
-      if (!pack.name)    return callback('Package Not Found: ' + packRequest)
-      if (!pack.version) return callback('Version Not Found: ' + packRequest)
-      if (!pack.domain)  return callback('Domain Not Found: '  + packRequest)
+      if (!pack.name)    return callbackError({ err: 'Package Not Found', pack: packRequest })
+      if (!pack.version) return callbackError({ err: 'Version Not Found', pack: packRequest })
+      if (!pack.domain)  return callbackError({ err: 'Domain Not Found', pack: packRequest })
       var packurl = pack.domain + options.domainSeperator
       packurl += pack.name + options.versionSeperator + pack.version + options.packageSeperator
       if (pack.file) packurl += pack.file
