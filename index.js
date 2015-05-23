@@ -80,7 +80,7 @@ function compare(a, b) {
   return -1 // less than
 }
 
-function isGt(a, b, depth) {
+function isGt(a, b) {
   a = a.split('.')
   b = b.split('.')
   var test = compare(a[0], b[0])
@@ -95,7 +95,7 @@ function isGt(a, b, depth) {
 }
 
 
-function isOk(a, b, depth) {
+function isOk(a, b) {
   a = a.split('.')
   b = b.split('.')
   var test = compare(a[0], b[0])
@@ -121,16 +121,33 @@ function findBestVersion(getversion, versions) {
 }
 
 
+function firstCdn(packver) {
+  for (var i in packver) {
+    return i
+  }
+  return null
+}
+
+
+function getPackageVersionFiles(pack, version) {
+  pack = packages[pack]
+  if (!pack) return
+  var packver = pack[version]
+  var cdn     = firstCdn(packver)
+  if (_.isObject(cdn) && cdn.file) return pack.files[cdn.file]
+  return pack.files[cdn]
+}
+
+
 function getMainFile(pack, version) {
   pack = packages[pack]
   if (!pack) return
   var packver = pack[version]
-  if (_.isObject(packver) && packver.main) {
-    return pack.mains[packver.main]
-  } else {
-    return pack.mains[0]
-  }
+  var cdn     = firstCdn(packver)
+  if (_.isObject(cdn) && cdn.main) return pack.mains[cdn.main]
+  return pack.mains[0]
 }
+
 
 function identifyVersionAndDomain(packageVersion) {
   var domain, name, version
@@ -187,6 +204,18 @@ function buildPackage(url) {
 }
 
 
+function packsToUrls(packs) {
+  var packageUrls = []
+  for (var i=0, len=packs.length; i < len; i++) {
+    var pack    = packs[i]
+    var packurl = pack.domain + options.domainSeperator
+    packurl    += pack.name + options.versionSeperator + pack.version + options.packageSeperator
+    if (pack.file) packurl += pack.file
+    packageUrls.push(packurl)
+  }
+  return packageUrls
+}
+
 
 function proxyCachePackages(req, callback) {
   function callbackError(param) {
@@ -212,7 +241,7 @@ function proxyCachePackages(req, callback) {
   }
   options.logger.debug('proxyCachePackages: ' + JSON.stringify(reqPackages))
 
-  var packageUrls = []
+  var packs = []
   for (var i=0, len=reqPackages.length; i < len; i++) {
     var packRequest = reqPackages[i]
     var pack = buildPackage(packRequest)
@@ -221,13 +250,12 @@ function proxyCachePackages(req, callback) {
       if (!pack.name)    return callbackError({ err: 'Package Not Found', pack: packRequest })
       if (!pack.version) return callbackError({ err: 'Version Not Found', pack: packRequest })
       if (!pack.domain)  return callbackError({ err: 'Domain Not Found', pack: packRequest })
-      var packurl = pack.domain + options.domainSeperator
-      packurl += pack.name + options.versionSeperator + pack.version + options.packageSeperator
-      if (pack.file) packurl += pack.file
       if (pack.redirect) return callback(null, { redirect: '../' + packurl.split(':')[1] })
     }
-    packageUrls.push(packurl)
+    packs.push(pack)
   }
+
+  var packageUrls = packsToUrls(packs)
 
   proxyCacheMultiDomain({url: packageUrls}, callback)
 }
