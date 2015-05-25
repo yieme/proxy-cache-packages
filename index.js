@@ -17,6 +17,7 @@ var logger      = {
   log:   console.log,
 }
 var options               = {
+  mainfilesTail:    '?',
   groupSeperator:   ',',
   domainSeperator:  ':',
   versionSeperator: '@',
@@ -25,10 +26,9 @@ var options               = {
   dir:              './tmp',
   keymap:           { '.': ':' },
   logger:           logger,
-//  packageDataUrl:   'https://pub.firebaseio.com/cdn',
-  packageDataUrl:   'cdnall_data.json',
+  packageDataUrl:   [ 'cdnall_data.json' ]
 }
-var packages
+var packages, remappedPackages
 
 
 function bootswatchFileHelper(path) {
@@ -42,6 +42,7 @@ function bootswatchFileHelper(path) {
 
 function loadPackages(path, callback) {
   if (callback) {
+    logger.debug('loadPackages: ' + path)
     fsurl(path, function fsurlLoad(err, data) {
       if (err) return callback(err)
       callback(null, fbkey.restore(data.packages))
@@ -129,8 +130,8 @@ function firstCdn(packver) {
 }
 
 
-function getPackageVersionFiles(pack, version) {
-  pack = packages[pack]
+function getPackageVersionFiles(packname, version) {
+  var pack = packages[packname]
   if (!pack) return
   var packver = pack[version]
   var cdn     = firstCdn(packver)
@@ -138,13 +139,37 @@ function getPackageVersionFiles(pack, version) {
   return pack.files[cdn]
 }
 
-
-function getMainFile(pack, version) {
-  pack = packages[pack]
+function getPackageVersionFiles(packname, version) {
+  var pack = packages[packname]
+  logger.debug('proxyCachePackages.getPackageVersionFiles.name: ' + packname)
   if (!pack) return
+  logger.debug('proxyCachePackages.getPackageVersionFiles.version: ' + version)
   var packver = pack[version]
+  logger.debug('proxyCachePackages.getPackageVersionFiles.packver: ' + JSON.stringify(packver))
   var cdn     = firstCdn(packver)
-  if (_.isObject(cdn) && cdn.main) return pack.mains[cdn.main]
+  logger.debug('proxyCachePackages.getPackageVersionFiles.cdn: ' + cdn)
+  var main    = packver[cdn]
+  logger.debug('proxyCachePackages.getPackageVersionFiles.getPackageVersionFiles: ' + JSON.stringify(main)) // TODO: HERE!
+  if (_.isObject(main) && main.file) return pack.files[main.file]
+  logger.debug('proxyCachePackages.getPackageVersionFiles.files[0]: ' + pack.files[0])
+  return pack.files[0]
+}
+
+
+
+function getMainFile(packname, version) {
+  var pack = packages[packname]
+  logger.debug('proxyCachePackages.getMainFile.name: ' + packname)
+  if (!pack) return
+  logger.debug('proxyCachePackages.getMainFile.version: ' + version)
+  var packver = pack[version]
+  logger.debug('proxyCachePackages.getMainFile.packver: ' + JSON.stringify(packver))
+  var cdn     = firstCdn(packver)
+  logger.debug('proxyCachePackages.getMainFile.cdn: ' + cdn)
+  var main    = packver[cdn]
+  logger.debug('proxyCachePackages.getMainFile.main: ' + JSON.stringify(main))
+  if (_.isObject(main) && main.main) return pack.mains[main.main]
+  logger.debug('proxyCachePackages.getMainFile.mains[0]: ' + pack.mains[0])
   return pack.mains[0]
 }
 
@@ -168,8 +193,8 @@ function identifyVersionAndDomain(packageVersion) {
   }
 
   domain   = _.keys(pack[version])[0] // first CDN
-  var file = getMainFile(name, version)
-  return { domain: domain, name: name, version: version, file: file }
+//  var file = getMainFile(name, version)
+  return { domain: domain, name: name, version: version }
 }
 
 
@@ -179,13 +204,14 @@ function buildPackage(url) {
   if (domainPos >= 0) return url
   var seperatorPos = url.indexOf(options.packageSeperator, 1) // skip early slash
   var pack
-  if (seperatorPos < 0 || seperatorPos == (url.length -1)) {
+  if (seperatorPos < 0 || seperatorPos == (url.length -1)) { // is there a seperator between package and file(s)
     pack      = identifyVersionAndDomain(url)
     if (!pack.name) return pack
     pack.file = getMainFile(pack.name, pack.version)
     if (pack.file.indexOf('/') >= 0 && pack.file.indexOf('.js') < 0) pack.redirect = true
   } else {
-    pack      = identifyVersionAndDomain(url.substr(0, seperatorPos))
+    pack          = identifyVersionAndDomain(url.substr(0, seperatorPos))
+//    pack.origFile = url.substr(seperatorPos + 1, url.length - seperatorPos)
     if (!pack.name) return pack
     pack.file = url.substr(seperatorPos + 1, url.length - seperatorPos - 1)
     if (!pack.file || (pack.file.indexOf('.') < 0) && pack.name != 'bootswatch') pack.file = getMainFile(pack.name, pack.version)
@@ -193,10 +219,10 @@ function buildPackage(url) {
   if (!pack.name) return pack
   if (pack.domain == 'bootstrap') pack.file = bootswatchFileHelper(pack.file)
   if (pack.name && pack.file) {
-    var part = pack.file.split('/')
-    var i = part.length - 1
+    var part    = pack.file.split('/')
+    var i       = part.length - 1
     if (part[i][0] == '.') {
-      part[i] = pack.name + part[i]
+      part[i]   = pack.name + part[i]
       pack.file = part.join('/')
     }
   }
@@ -204,16 +230,20 @@ function buildPackage(url) {
 }
 
 
-function packsToUrls(packs) {
-  var packageUrls = []
-  for (var i=0, len=packs.length; i < len; i++) {
-    var pack    = packs[i]
-    var packurl = pack.domain + options.domainSeperator
-    packurl    += pack.name + options.versionSeperator + pack.version + options.packageSeperator
-    if (pack.file) packurl += pack.file
-    packageUrls.push(packurl)
-  }
-  return packageUrls
+function isFileInPackage(file, packname, version) {
+  options.logger.debug('proxyCachePackages.isFileInPackage: ' + file + ' in ' + packname + '@' + version)
+  var files  = ',' + getPackageVersionFiles(packname, version) + ','
+  var search = ',' + file + ','
+  file = file.split('?')[0]
+  var search2 = ',' + file + ','
+  return (files.indexOf(search) >= 0 || files.indexOf(search2) >= 0)
+}
+
+function packToUrl(pack) {
+  var packurl = pack.domain + options.domainSeperator
+  packurl    += pack.name + options.versionSeperator + pack.version + options.packageSeperator
+  if (pack.file) packurl += pack.file
+  return packurl
 }
 
 
@@ -222,7 +252,7 @@ function proxyCachePackages(req, callback) {
     param.in  = (param.in) ? 'proxyCachePackages' + '.' + param.in : 'proxyCachePackages'
     param.url = req.url
     logger.warn(JSON.stringify(param))
-    return callback('{ "code": 404, "error": "Not Found" }')
+    return callback(null, { headers: { code: 404 }, body: '{ "error": "Not Found" }' })
   }
 
   if (!callback) {
@@ -234,6 +264,12 @@ function proxyCachePackages(req, callback) {
   }
 
   var reqPackages = req.url
+  var reqend = reqPackages.length - 1
+  var forceMainsRequest = (reqPackages.substr(reqend, 1) == options.mainfilesTail)
+  if (forceMainsRequest) {
+    reqPackages = reqPackages.substr(0, reqend)
+  }
+
   if (!reqPackages) return callbackError({ err: 'Missing Package(s)' })
 
   if ('string' == typeof reqPackages) {
@@ -250,12 +286,40 @@ function proxyCachePackages(req, callback) {
       if (!pack.name)    return callbackError({ err: 'Package Not Found', pack: packRequest })
       if (!pack.version) return callbackError({ err: 'Version Not Found', pack: packRequest })
       if (!pack.domain)  return callbackError({ err: 'Domain Not Found', pack: packRequest })
-      if (pack.redirect) return callback(null, { redirect: '../' + packurl.split(':')[1] })
+      if (pack.redirect) {
+        var url = packToUrl(pack)
+        return callback(null, { redirect: '../' + url.split(':')[1] + options.mainfilesTail })
+      }
     }
     packs.push(pack)
   }
 
-  var packageUrls = packsToUrls(packs)
+  var packageUrls = []
+  var len = packs.length
+  for (var i=0; i < len; i++) packageUrls.push(packToUrl(packs[i]))
+
+  if (len > 1 && !forceMainsRequest) { // multiple packages and not a main bundle force
+    var file = pack[len-1].file
+    var names = []
+    for (i = len-1; i >= 0; i--) {
+      pack = packs[i] // last package file
+      if (!isFileInPackage(file, pack.name, pack.version)) { // if the file isn't one for the last package
+        packageUrls = [ packToUrl(pack) ] // only load this file
+        i = -1 // done
+      }
+      names.push(pack.name + '@' + pack.version)
+    }
+    return callbackError({ err: 'File Not Found', file: file, in: names })
+  } else {
+    for (var i=0; i < len; i++) {
+      pack = packs[i]
+      if (!isFileInPackage(pack.file, pack.name, pack.version)) { // if the file isn't one for the last package
+        return callbackError({ err: 'File Not Found', file: file, in: pack.name + '@' + pack.version })
+      }
+    }
+  }
+
+
 
   proxyCacheMultiDomain({url: packageUrls}, callback)
 }
